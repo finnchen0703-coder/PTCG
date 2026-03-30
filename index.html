@@ -32,42 +32,40 @@
         const resultDiv = document.getElementById('result');
 
         fileInput.onchange = async (e) => {
-            alert("偵測到照片了！準備開始上傳..."); // 增加這一行
             const file = e.target.files[0];
             if (!file) return;
 
             statusDiv.innerText = "🚀 正在上傳照片...";
-            
-            // 2. 上傳圖片到 Storage (記得你之前建的 bucket 叫 card-images)
-            const fileName = `scan_${Date.now()}.jpg`;
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('card-images')
-                .upload(fileName, file, {contentType: file.type});
+            console.log("開始上傳...", file.name);
 
-            if (uploadError) return statusDiv.innerText = "上傳失敗: " + uploadError.message;
+            try {
+                const fileName = `scan_${Date.now()}.jpg`;
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('card-images') // <--- 請再次確認後台名字一模一樣
+                    .upload(fileName, file);
 
-            // 3. 取得圖片公開網址
-            const { data: { publicUrl } } = supabase.storage.from('card-images').getPublicUrl(fileName);
+                if (uploadError) {
+                    alert("上傳失敗：" + uploadError.message);
+                    return;
+                }
 
-            statusDiv.innerText = "🧠 AI 正在鑑定中，請稍候...";
+                const { data: { publicUrl } } = supabase.storage.from('card-images').getPublicUrl(fileName);
+                statusDiv.innerText = "🧠 AI 正在鑑定中...";
 
-            // 4. 呼叫你剛寫好的 Edge Function
-            const { data, error } = await supabase.functions.invoke('identify-card', {
-                body: { imageUrl: publicUrl }
-            });
+                // 呼叫 Edge Function
+                const { data, error } = await supabase.functions.invoke('identify-card', {
+                    body: { imageUrl: publicUrl }
+                });
 
-            if (error) {
-                statusDiv.innerText = "辨識出錯";
-                console.error(error);
-            } else {
-                statusDiv.innerText = "✅ 鑑定完成！";
-                resultDiv.style.display = "block";
-                resultDiv.innerHTML = `
-                    <h3>鑑定結果：</h3>
-                    <p><b>名稱：</b> ${data.name}</p>
-                    <p><b>編號：</b> ${data.card_code}</p>
-                    <p><b>語言：</b> ${data.language}</p>
-                `;
+                if (error) {
+                    alert("AI 辨識呼叫失敗：" + JSON.stringify(error));
+                } else {
+                    statusDiv.innerText = "✅ 鑑定完成！";
+                    resultDiv.style.display = "block";
+                    resultDiv.innerHTML = `<h3>結果：</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                alert("程式執行發生錯誤：" + err.message);
             }
         };
     </script>
