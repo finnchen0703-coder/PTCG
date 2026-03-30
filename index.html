@@ -25,7 +25,7 @@
         // 1. 請填入你的 Supabase 資訊 (在 Project Settings -> API 找)
         const SUPABASE_URL = 'https://ddwamjhkxxogleqstncx.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkd2FtamhreHhvZ2xlcXN0bmN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDY5OTUsImV4cCI6MjA4OTE4Mjk5NX0.xKcYy9ZQlZl3W9BCDsmKicVm1qshb_QbcmjT1yMD1Lw';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const fileInput = document.getElementById('fileInput');
         const statusDiv = document.getElementById('status');
@@ -36,36 +36,33 @@
             if (!file) return;
 
             statusDiv.innerText = "🚀 正在上傳照片...";
-            console.log("開始上傳...", file.name);
 
             try {
                 const fileName = `scan_${Date.now()}.jpg`;
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('card-images') // <--- 請再次確認後台名字一模一樣
+                // 使用 db 來操作
+                const { data: uploadData, error: uploadError } = await db.storage
+                    .from('card-images')
                     .upload(fileName, file);
 
-                if (uploadError) {
-                    alert("上傳失敗：" + uploadError.message);
-                    return;
-                }
+                if (uploadError) throw uploadError;
 
-                const { data: { publicUrl } } = supabase.storage.from('card-images').getPublicUrl(fileName);
+                const { data: { publicUrl } } = db.storage.from('card-images').getPublicUrl(fileName);
                 statusDiv.innerText = "🧠 AI 正在鑑定中...";
 
-                // 呼叫 Edge Function
-                const { data, error } = await supabase.functions.invoke('identify-card', {
+                const { data, error: funcError } = await db.functions.invoke('identify-card', {
                     body: { imageUrl: publicUrl }
                 });
 
-                if (error) {
-                    alert("AI 辨識呼叫失敗：" + JSON.stringify(error));
-                } else {
-                    statusDiv.innerText = "✅ 鑑定完成！";
-                    resultDiv.style.display = "block";
-                    resultDiv.innerHTML = `<h3>結果：</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
-                }
+                if (funcError) throw funcError;
+
+                statusDiv.innerText = "✅ 鑑定完成！";
+                resultDiv.style.display = "block";
+                resultDiv.innerHTML = `<h3>結果：</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+
             } catch (err) {
-                alert("程式執行發生錯誤：" + err.message);
+                console.error(err);
+                alert("出錯了：" + err.message);
+                statusDiv.innerText = "❌ 發生錯誤";
             }
         };
     </script>
