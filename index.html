@@ -32,6 +32,7 @@
         const resultDiv = document.getElementById('result');
 
         fileInput.onchange = async (e) => {
+            alert("偵測到照片了！準備開始上傳..."); // 增加這一行
             const file = e.target.files[0];
             if (!file) return;
 
