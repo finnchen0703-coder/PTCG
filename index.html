@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 卡牌鑑定師</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f9; }
+        .btn { background: #3ecf8e; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+        #status { margin-top: 20px; color: #666; }
+        #result { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; display: none; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>🎴 AI 卡牌辨識</h1>
+    
+    <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
+    <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
+
+    <div id="status">準備就緒</div>
+    <div id="result"></div>
+
+    <script>
+        // 1. 請填入你的 Supabase 資訊 (在 Project Settings -> API 找)
+        const SUPABASE_URL = https://ddwamjhkxxogleqstncx.supabase.co;
+        const SUPABASE_ANON_KEY = sb_publishable_lca7iyilkPR1ZFiJL_OmRQ_J4KxCCSA;
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            statusDiv.innerText = "🚀 正在上傳照片...";
+            
+            // 2. 上傳圖片到 Storage (記得你之前建的 bucket 叫 card-images)
+            const fileName = `scan_${Date.now()}.jpg`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('card-images')
+                .upload(fileName, file);
+
+            if (uploadError) return statusDiv.innerText = "上傳失敗: " + uploadError.message;
+
+            // 3. 取得圖片公開網址
+            const { data: { publicUrl } } = supabase.storage.from('card-images').getPublicUrl(fileName);
+
+            statusDiv.innerText = "🧠 AI 正在鑑定中，請稍候...";
+
+            // 4. 呼叫你剛寫好的 Edge Function
+            const { data, error } = await supabase.functions.invoke('identify-card', {
+                body: { imageUrl: publicUrl }
+            });
+
+            if (error) {
+                statusDiv.innerText = "辨識出錯";
+                console.error(error);
+            } else {
+                statusDiv.innerText = "✅ 鑑定完成！";
+                resultDiv.style.display = "block";
+                resultDiv.innerHTML = `
+                    <h3>鑑定結果：</h3>
+                    <p><b>名稱：</b> ${data.name}</p>
+                    <p><b>編號：</b> ${data.card_code}</p>
+                    <p><b>語言：</b> ${data.language}</p>
+                `;
+            }
+        };
+    </script>
+</body>
+</html>
