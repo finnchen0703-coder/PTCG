@@ -25,8 +25,8 @@
         // 1. 請填入你的 Supabase 資訊 (在 Project Settings -> API 找)
         const SUPABASE_URL = 'https://ddwamjhkxxogleqstncx.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkd2FtamhreHhvZ2xlcXN0bmN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDY5OTUsImV4cCI6MjA4OTE4Mjk5NX0.xKcYy9ZQlZl3W9BCDsmKicVm1qshb_QbcmjT1yMD1Lw';
-        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const fileInput = document.getElementById('fileInput');
         const statusDiv = document.getElementById('status');
         const resultDiv = document.getElementById('result');
