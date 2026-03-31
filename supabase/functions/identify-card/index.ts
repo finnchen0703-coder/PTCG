@@ -6,46 +6,98 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// ✅ 安全版 base64（避免 stack overflow）
+function toBase64(buffer: ArrayBuffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  return btoa(binary);
+}
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
   try {
     const { imageUrl } = await req.json()
+
+    if (!imageUrl) {
+      throw new Error("沒有提供 imageUrl")
+    }
+
     console.log("收到圖片網址:", imageUrl)
 
     const apiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!apiKey) throw new Error("雲端找不到 GEMINI_API_KEY，請檢查 Secrets 設定")
+    if (!apiKey) {
+      throw new Error("找不到 GEMINI_API_KEY（請到 Supabase Secrets 設定）")
+    }
 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
-    console.log("正在抓取圖片內容...")
-    const imageResp = await fetch(imageUrl)
-    if (!imageResp.ok) throw new Error(`無法抓取圖片: ${imageResp.statusText}`)
-    
-    const arrayBuffer = await imageResp.arrayBuffer()
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    console.log("正在抓取圖片...")
+    const res = await fetch(imageUrl)
+    if (!res.ok) {
+      throw new Error(`圖片抓取失敗: ${res.status}`)
+    }
 
-    console.log("正在呼叫 Gemini AI...")
-    const prompt = "你是一位 TCG 專家。請辨識這張卡片的名稱、語言及編號。請只回傳 JSON：{\"name\": \"...\", \"language\": \"...\", \"card_code\": \"...\"}"
+    const arrayBuffer = await res.arrayBuffer()
+
+    console.log("轉換 base64...")
+    const base64Image = toBase64(arrayBuffer)
+
+    console.log("呼叫 Gemini...")
+    const prompt = `
+你是一位 TCG 專家。
+
+請辨識圖片中的卡片資訊。
+
+⚠️ 嚴格規則：
+- 只能回傳 JSON
+- 不要 markdown
+- 不要解釋
+
+格式：
+{"name": "...", "language": "...", "card_code": "..."}
+`
 
     const result = await model.generateContent([
       prompt,
-      { inlineData: { data: base64Image, mimeType: "image/jpeg" } }
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: "image/jpeg"
+        }
+      }
     ])
 
-    const responseText = result.response.text()
-    console.log("AI 回傳成功:", responseText)
+    let text = result.response.text()
 
-    return new Response(responseText, { 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    console.log("AI 原始回傳:", text)
+
+    // ✅ 清理 ```json ``` 包裝
+    text = text.replace(/```json|```/g, "").trim()
+
+    console.log("清理後 JSON:", text)
+
+    return new Response(text, {
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     })
 
   } catch (err) {
-    console.error("崩潰原因:", err.message)
-    return new Response(JSON.stringify({ error: err.message }), { 
-      status: 500, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    console.error("錯誤:", err)
+
+    return new Response(JSON.stringify({
+      error: err.message || "未知錯誤"
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     })
   }
 })
