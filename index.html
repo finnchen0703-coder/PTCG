@@ -15,6 +15,27 @@
     </style>
 </head>
 <body>
+    <hr style="margin: 30px 0; border: 1px solid #ddd;">
+
+    <!-- 4. 我的收藏區塊 -->
+    <h2>🗂️ 我的卡本</h2>
+    <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 載入我的收藏</button>
+    
+    <!-- 這裡用來顯示資料庫撈出來的卡片列表 -->
+    <div id="collection-container" style="margin-top: 20px; display: none;">
+        <table id="collection-table" style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
+            <thead style="background: #333; color: white;">
+                <tr>
+                    <th style="padding: 10px; text-align: left;">卡片名稱</th>
+                    <th style="padding: 10px; text-align: left;">編號</th>
+                    <th style="padding: 10px; text-align: left;">狀態/評級</th>
+                </tr>
+            </thead>
+            <tbody id="collection-body">
+                <!-- 資料會由 JavaScript 動態塞入這裡 -->
+            </tbody>
+        </table>
+    </div>
     <h1>🎴 AI 卡牌掃描儀</h1>
     
     <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
@@ -168,6 +189,71 @@
                 alert("儲存失敗：" + err.message + "\n(請確認資料庫 RLS 權限已開啟)");
                 saveSection.style.display = "block"; // 失敗的話把按鈕顯示回來
                 statusDiv.innerText = "❌ 儲存失敗";
+            }
+        }
+        // === 動作三：載入並顯示收藏 (使用 JOIN) ===
+        async function loadCollection() {
+            const container = document.getElementById('collection-container');
+            const tbody = document.getElementById('collection-body');
+            const statusDiv = document.getElementById('status');
+            
+            statusDiv.innerText = "⏳ 正在從資料庫撈取收藏...";
+            tbody.innerHTML = ""; // 清空舊資料
+            container.style.display = "block";
+
+            try {
+                // 這裡就是 Supabase 的 JOIN 語法！
+                // 我們從 user_collections 出發，順便把關聯的 card_master 資料抓出來
+                const { data, error } = await db
+                    .from('user_collections')
+                    .select(`
+                        id,
+                        status,
+                        grade_vendor,
+                        grade_score,
+                        card_master (
+                            name,
+                            card_code,
+                            language
+                        )
+                    `)
+                    .order('id', { ascending: false }); // 新增的排在最上面
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='3' style='padding: 15px; text-align: center;'>目前還沒有收藏喔！趕快去掃描吧。</td></tr>";
+                    statusDiv.innerText = "✅ 載入完成";
+                    return;
+                }
+
+                // 把撈出來的資料一筆一筆變成表格的 HTML
+                data.forEach(item => {
+                    const card = item.card_master; // 這是 JOIN 過來的圖鑑資料
+                    
+                    // 處理評級顯示文字
+                    let gradeText = "裸卡 (Raw)";
+                    if (item.status === 'graded') {
+                        gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
+                    }
+
+                    // 建立表格的列 (Row)
+                    const row = `
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;"><b>${card.name}</b> <br><small style="color:#666;">${card.language}</small></td>
+                            <td style="padding: 12px; color:#555;">${card.card_code}</td>
+                            <td style="padding: 12px;">${gradeText}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+                statusDiv.innerText = "✅ 收藏載入完成！";
+
+            } catch (err) {
+                console.error("載入收藏失敗:", err);
+                alert("載入收藏失敗：" + err.message);
+                statusDiv.innerText = "❌ 載入失敗";
             }
         }
     </script>
