@@ -15,6 +15,12 @@
     </style>
 </head>
 <body>
+    <h1>🎴 AI 卡牌掃描儀</h1>
+    
+    <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
+    <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
+
+    <div id="status">準備就緒</div>
     <hr style="margin: 30px 0; border: 1px solid #ddd;">
 
     <!-- 4. 我的收藏區塊 -->
@@ -36,13 +42,6 @@
             </tbody>
         </table>
     </div>
-    <h1>🎴 AI 卡牌掃描儀</h1>
-    
-    <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
-    <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
-
-    <div id="status">準備就緒</div>
-    
     <div id="result"></div>
 
     <div id="save-section" class="panel" style="display:none;">
