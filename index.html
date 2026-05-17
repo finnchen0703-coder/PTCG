@@ -248,7 +248,7 @@
                             <td style="padding: 12px; color:#555;">${card.card_code}</td>
                             <td style="padding: 12px;" id="status-cell-${item.id}">${gradeText}</td>
                             <td style="padding: 12px; text-align: center;">
-                                <button onclick="enterEditMode(${item.id}, '${item.status}', '${item.grade_vendor || 'Raw'}', ${item.grade_score || 10})" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 修改</button>
+                                <button onclick="enterEditMode('${item.id}', '${item.status}', ${vendorArg}, ${scoreArg})" style="background:#007bff; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 編輯</button>
                             </td>
                         </tr>
                     `;
@@ -288,7 +288,7 @@
 
             // 2. 將修改按鈕替換為「儲存 💾」與「取消 ❌」
             actionCell.innerHTML = `
-                <button onclick="saveUpdate(${id})" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; margin-right:5px;">💾 儲存</button>
+                <button onclick="saveUpdate('${id}')" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">💾 儲存</button>
                 <button onclick="loadCollection()" style="background:#6c757d; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">❌ 取消</button>
             `;
         }
