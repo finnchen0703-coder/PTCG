@@ -255,7 +255,7 @@
                 if (scoreFilter === '10') {
                     listQuery = listQuery.eq('grade_score', 10);
                 } else if (scoreFilter === '9') {
-                    listQuery = listQuery.gte('grade_score', 9);
+                    listQuery = listQuery.lte('grade_score', 9);
                 }
 
                 const { data, error } = await listQuery.order('collection_id', { ascending: false });
