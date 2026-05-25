@@ -307,6 +307,7 @@
 
                 document.getElementById('collection-container').style.display = "block";
                 statusDiv.innerText = "✅ 載入完成！";
+                await loadAndRenderStatsTable();
 
             } catch (err) {
                 console.error("繪製列表失敗:", err);
