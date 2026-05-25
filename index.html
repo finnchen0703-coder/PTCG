@@ -224,7 +224,7 @@
                 if (scoreFilter === '10') {
                     query = query.eq('grade_score', 10);
                 } else if (scoreFilter === '9') {
-                    query = query.gte('grade_score', 9); // gte 代表 Greater Than or Equal (大於等於)
+                    query = query.lte('grade_score', 9); // lte 代表 Less Than or Equal (小於等於)
                 }
 
                 // 3. 發送請求給資料庫
