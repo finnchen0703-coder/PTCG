@@ -199,6 +199,7 @@
 
         // 1. 載入收藏列表 (只負責從雲端抓資料)
         // === 動作三：載入收藏列表 (加入強固的價格防錯機制) ===
+        // === 修改後的 3 表 JOIN 查詢語法 ===
         async function loadCollection() {
             const statusDiv = document.getElementById('status');
             statusDiv.innerText = "⏳ 正在從資料庫撈取收藏與最新市場價格...";
@@ -220,40 +221,28 @@
 
                 if (error) throw error;
 
-                // 進行安全資料轉換
+                // 轉換資料結構：因為 price_history 會回傳陣列，我們在前端先找出「最新的一筆價格」
                 allCachedData = data.map(item => {
                     const card = item.card_master;
+                    const history = card?.price_history || [];
                     
-                    // 💡 防錯機制 1：如果 card_master 或是 price_history 是空的，自動給予空陣列 []
-                    const history = card?.price_history ?? [];
-                    
-                    let latestPrice = 0;
-
-                    // 💡 防錯機制 2：只有在確實有歷史價格資料時，才進行排序與撈取
-                    if (history.length > 0) {
-                        // 複製一份陣列進行排序，避免更動原始資料
-                        const sortedHistory = [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                        
-                        // 確保撈出來的 price 有數值，如果寫入時不小心是 null，則安全轉為 0
-                        latestPrice = sortedHistory[0]?.price ?? 0;
-                    }
+                    // 根據建立時間排序，將最新的價格排在最前面
+                    history.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    const latestPrice = history[0] ? history[0].price : 0;
 
                     return {
                         ...item,
-                        price: latestPrice // 就算完全沒有價格紀錄，這裡也會安全地回傳 0
+                        price: latestPrice // 這樣後面的 renderTable() 邏輯完全不用改！
                     };
                 });
 
                 document.getElementById('collection-container').style.display = "block";
                 statusDiv.innerText = "✅ 載入完成！";
-                
-                // 呼叫原本的繪製畫面函式
                 renderTable(); 
 
             } catch (err) {
                 console.error("載入失敗:", err);
                 alert("載入收藏失敗：" + err.message);
-                statusDiv.innerText = "❌ 載入失敗";
             }
         }
 
