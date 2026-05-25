@@ -242,32 +242,41 @@
             tbody.innerHTML = ""; 
 
             try {
-                // 1. 基礎查詢：直接查詢我們剛建好的 View
-                let query = db.from('collection_dashboard').select('*');
+                // 1. 建立兩個一模一樣的基礎查詢，一個給列表，一個給聚合計算
+                let listQuery = db.from('collection_dashboard').select('*');
+                let sumQuery = db.from('collection_dashboard').select('current_price.sum()'); // ✨ 讓 PostgreSQL 直接算 SUM
 
-                // 2. 動態加上篩選條件 (讓資料庫去過濾，而不是 JavaScript)
+                // 2. 動態加上相同的篩選條件 (確保兩邊篩選範圍完全一致)
                 if (vendorFilter === 'Raw') {
-                    query = query.eq('status', 'raw');
+                    listQuery = listQuery.eq('status', 'raw');
+                    sumQuery = sumQuery.eq('status', 'raw');
                 } else if (vendorFilter !== 'ALL') {
-                    query = query.eq('grade_vendor', vendorFilter);
+                    listQuery = listQuery.eq('grade_vendor', vendorFilter);
+                    sumQuery = sumQuery.eq('grade_vendor', vendorFilter);
                 }
 
                 if (scoreFilter === '10') {
-                    query = query.eq('grade_score', 10);
+                    listQuery = listQuery.eq('grade_score', 10);
+                    sumQuery = sumQuery.eq('grade_score', 10);
                 } else if (scoreFilter === '9') {
-                    query = query.lte('grade_score', 9); // lte 代表 Less Than or Equal (小於等於)
+                    listQuery = listQuery.gte('grade_score', 9);
+                    sumQuery = sumQuery.gte('grade_score', 9);
                 }
 
-                // 3. 發送請求給資料庫
-                const { data, error } = await query.order('collection_id', { ascending: false });
+                // 3. 同步發送請求給資料庫 (非同步平行處理，速度極快)
+                const [listRes, sumRes] = await Promise.all([
+                    listQuery.order('collection_id', { ascending: false }),
+                    sumQuery
+                ]);
 
-                if (error) throw error;
+                if (listRes.error) throw listRes.error;
+                if (sumRes.error) throw sumRes.error;
 
-                // 4. 計算總數與總市值 (這時的 data 已經是資料庫篩選過後的精確名單了)
-                let totalValue = 0;
-                data.forEach(item => {
-                    totalValue += item.current_price; 
-                });
+                const data = listRes.data;
+                
+                // ✨ 4. 直接從資料庫的回傳結果中拿到總市值，完全不用寫 forEach 迴圈
+                // Supabase 回傳的格式會是：[ { sum: 15000 } ]
+                const totalValue = sumRes.data[0]?.sum ?? 0;
 
                 document.getElementById('total-cards').innerText = `${data.length} 張`;
                 document.getElementById('total-value').innerText = `$${totalValue.toLocaleString()}`;
