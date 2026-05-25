@@ -232,21 +232,20 @@
         let allCachedData = []; 
 
         // === 動作：根據篩選條件向資料庫請求資料與計算總市值 ===
-        // === 動作：根據篩選條件向資料庫請求資料與計算總市值 (RPC 修正安全版) ===
         async function loadCollection() {
             const statusDiv = document.getElementById('status');
             const tbody = document.getElementById('collection-body');
             const vendorFilter = document.getElementById('filter-vendor').value;
             const scoreFilter = document.getElementById('filter-score').value;
 
-            statusDiv.innerText = "⏳ 正在請資料庫篩選、排序並計算總市值...";
-            tbody.innerHTML = ""; 
+            statusDiv.innerText = "⏳ 正在撈取收藏清單...";
+            tbody.innerHTML = ""; // 先清空舊畫面
 
             try {
-                // 1. 建立列表查詢 (只拿明細)
+                // 1. 【核心策略】先單獨向 View 請求明細資料，確保主要列表一定能畫出來
                 let listQuery = db.from('collection_dashboard').select('*');
 
-                // 2. 動態加上列表的篩選條件
+                // 讓資料庫在雲端直接做篩選
                 if (vendorFilter === 'Raw') {
                     listQuery = listQuery.eq('status', 'raw');
                 } else if (vendorFilter !== 'ALL') {
@@ -259,68 +258,74 @@
                     listQuery = listQuery.gte('grade_score', 9);
                 }
 
-                // 3. 【核心修正】利用 db.rpc 呼叫後端計算機，直接把篩選條件傳過去
-                // 讓 PostgreSQL 在安全防線內直接跑 SUM()
-                const [listRes, rpcRes] = await Promise.all([
-                    listQuery.order('collection_id', { ascending: false }),
-                    db.rpc('get_total_value', { 
-                        p_vendor: vendorFilter, 
-                        p_score: scoreFilter 
-                    })
-                ]);
+                const { data, error } = await listQuery.order('collection_id', { ascending: false });
 
-                if (listRes.error) throw listRes.error;
-                if (rpcRes.error) throw rpcRes.error;
+                if (error) throw error;
 
-                const data = listRes.data;
-                
-                // 4. 直接拿到安全計算後的數字結果！
-                const totalValue = rpcRes.data ?? 0;
-
-                // 5. 更新指標卡畫面
-                document.getElementById('total-cards').innerText = `${data.length} 張`;
-                document.getElementById('total-value').innerText = `$${totalValue.toLocaleString()}`;
-
-                // 6. 繪製畫面列表
+                // 2. 順利拿到資料，不囉唆立刻把表格畫出來！
                 if (data.length === 0) {
                     tbody.innerHTML = "<tr><td colspan='4' style='padding: 15px; text-align: center;'>沒有符合條件的卡片。</td></tr>";
-                    statusDiv.innerText = "✅ 載入完成";
-                    return;
-                }
+                } else {
+                    data.forEach(item => {
+                        let gradeText = "裸卡 (Raw)";
+                        if (item.status === 'graded') {
+                            gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
+                        }
 
-                data.forEach(item => {
-                    let gradeText = "裸卡 (Raw)";
-                    if (item.status === 'graded') {
-                        gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
+                        const vendorArg = item.grade_vendor ? `'${item.grade_vendor}'` : `'Raw'`;
+                        const scoreArg = item.grade_score ? item.grade_score : 10;
+                        const currentPrice = item.current_price || 0;
+
+                        const row = `
+                            <tr id="row-${item.collection_id}" style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 12px;"><b>${item.name}</b> <br><small style="color:#666;">${item.card_code} | ${item.language}</small></td>
+                                <td style="padding: 12px;" id="status-cell-${item.collection_id}">${gradeText}</td>
+                                <td style="padding: 12px; color: #28a745; font-weight: bold;" id="price-cell-${item.collection_id}">$${currentPrice.toLocaleString()}</td>
+                                <td style="padding: 12px; text-align: center;" id="action-cell-${item.collection_id}">
+                                    <button onclick="enterEditMode('${item.collection_id}', '${item.card_id}', '${item.status}', ${vendorArg}, ${scoreArg}, ${currentPrice})" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 修改</button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                }
+                
+                // 顯示列表區塊
+                document.getElementById('collection-container').style.display = "block";
+                statusDiv.innerText = "⏳ 列表載入成功，正在同步計算總市值與統計數據...";
+
+                // 3. 【防禦性副圈】把可能出錯的 RPC 市值計算包裹在獨立的 try-catch 中
+                // 這樣就算大後端函數沒設好，頂多是指標卡顯示 $0，下面的卡片列表完全不受影響！
+                try {
+                    const { data: rpcTotal, error: rpcError } = await db.rpc('get_total_value', { 
+                        p_vendor: vendorFilter, 
+                        p_score: scoreFilter 
+                    });
+                    
+                    if (rpcError) throw rpcError;
+                    
+                    const totalValue = rpcTotal ?? 0;
+                    document.getElementById('total-cards').innerText = `${data.length} 張`;
+                    document.getElementById('total-value').innerText = `$${totalValue.toLocaleString()}`;
+                    
+                    // 同步渲染底下的百分比統計表格
+                    if (typeof loadAndRenderStatsTable === "function") {
+                        await loadAndRenderStatsTable();
                     }
+                    statusDiv.innerText = "✅ 所有收藏與統計載入完成！";
 
-                    const vendorArg = item.grade_vendor ? `'${item.grade_vendor}'` : `'Raw'`;
-                    const scoreArg = item.grade_score ? item.grade_score : 10;
-                    const currentPrice = item.current_price || 0;
-
-                    const row = `
-                        <tr id="row-${item.collection_id}" style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 12px;"><b>${item.name}</b> <br><small style="color:#666;">${item.card_code} | ${item.language}</small></td>
-                            <td style="padding: 12px;" id="status-cell-${item.collection_id}">${gradeText}</td>
-                            <td style="padding: 12px; color: #28a745; font-weight: bold;" id="price-cell-${item.collection_id}">$${currentPrice.toLocaleString()}</td>
-                            <td style="padding: 12px; text-align: center;" id="action-cell-${item.collection_id}">
-                                <button onclick="enterEditMode('${item.collection_id}', '${item.card_id}', '${item.status}', ${vendorArg}, ${scoreArg}, ${currentPrice})" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 修改</button>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
-
-                // 觸發底下的百分比統計表格更新
-                if (typeof loadAndRenderStatsTable === "function") {
-                    await loadAndRenderStatsTable();
+                } catch (subErr) {
+                    // 如果 RPC 市值或比例表格出錯，只在後台默默打印警告，不彈窗嚇使用者，且維持列表正常顯示
+                    console.warn("⚠️ 後端統計或 RPC 市值計算有誤，但不影響列表呈現:", subErr);
+                    document.getElementById('total-cards').innerText = `${data.length} 張`;
+                    document.getElementById('total-value').innerText = "$0 (統計暫時不可用)";
+                    statusDiv.innerText = "⚠️ 列表載入成功 (但市值統計數據有誤)";
                 }
-
-                statusDiv.innerText = "✅ 載入完成！";
 
             } catch (err) {
-                console.error("載入失敗:", err);
-                alert("載入收藏失敗：" + err.message);
+                // 只有在最核心的「列表本身撈不到」時，才進行大崩潰提示
+                console.error("主要清單載入失敗:", err);
+                alert("載入收藏清單失敗：" + err.message);
                 statusDiv.innerText = "❌ 載入失敗";
             }
         }
