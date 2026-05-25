@@ -231,14 +231,14 @@
 
         let allCachedData = []; 
 
-        // === 動作1,2：根據篩選條件向資料庫請求資料 ===
+        // === 動作：根據篩選條件向資料庫請求資料與計算總市值 ===
         async function loadCollection() {
             const statusDiv = document.getElementById('status');
             const tbody = document.getElementById('collection-body');
             const vendorFilter = document.getElementById('filter-vendor').value;
             const scoreFilter = document.getElementById('filter-score').value;
 
-            statusDiv.innerText = "⏳ 正在請資料庫篩選與計算...";
+            statusDiv.innerText = "⏳ 正在請資料庫篩選、排序並計算總市值...";
             tbody.innerHTML = ""; 
 
             try {
@@ -278,10 +278,11 @@
                 // Supabase 回傳的格式會是：[ { sum: 15000 } ]
                 const totalValue = sumRes.data[0]?.sum ?? 0;
 
+                // 5. 更新指標卡畫面
                 document.getElementById('total-cards').innerText = `${data.length} 張`;
                 document.getElementById('total-value').innerText = `$${totalValue.toLocaleString()}`;
 
-                // 5. 繪製畫面
+                // 6. 繪製畫面列表
                 if (data.length === 0) {
                     tbody.innerHTML = "<tr><td colspan='4' style='padding: 15px; text-align: center;'>沒有符合條件的卡片。</td></tr>";
                     statusDiv.innerText = "✅ 載入完成";
@@ -294,7 +295,6 @@
                         gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
                     }
 
-                    // 防呆處理：處理可能為 null 的鑑定資訊
                     const vendorArg = item.grade_vendor ? `'${item.grade_vendor}'` : `'Raw'`;
                     const scoreArg = item.grade_score ? item.grade_score : 10;
                     const currentPrice = item.current_price || 0;
@@ -312,12 +312,15 @@
                     tbody.innerHTML += row;
                 });
 
-                document.getElementById('collection-container').style.display = "block";
+                // 觸發底下的百分比統計表格更新
+                if (typeof loadAndRenderStatsTable === "function") {
+                    await loadAndRenderStatsTable();
+                }
+
                 statusDiv.innerText = "✅ 載入完成！";
-                await loadAndRenderStatsTable();
 
             } catch (err) {
-                console.error("繪製列表失敗:", err);
+                console.error("載入失敗:", err);
                 alert("載入收藏失敗：" + err.message);
                 statusDiv.innerText = "❌ 載入失敗";
             }
