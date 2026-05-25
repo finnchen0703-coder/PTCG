@@ -53,7 +53,7 @@
         </select>
     </div>
 
-    <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 從雲端載入最新資料</button>
+    <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 載入我的卡本</button>
     
     <div id="collection-container" style="margin-top: 20px; display: none;">
         <table id="collection-table" style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
@@ -195,25 +195,26 @@
         }
         // === 動作三：載入並顯示收藏 (使用 JOIN) ===
         // ==========================================
-        // ⬇️ 收藏庫專用功能區塊 (支援篩選與市值計算) ⬇️
+        // ==========================================
+        // ⬇️ 收藏庫專用功能區塊 (支援 3-Way JOIN 與歷史價格) ⬇️
         // ==========================================
 
-        let allCachedData = []; // 建立一個全域變數，用來把撈下來的資料存放在瀏覽器記憶體中
+        let allCachedData = []; 
 
-        // 1. 載入收藏列表 (只負責從雲端抓資料)
-        // === 動作三：載入收藏列表 (加入強固的價格防錯機制) ===
-        // === 修改後的 3 表 JOIN 查詢語法 ===
+        // 1. 載入收藏列表 (加入強固的價格防錯機制)
         async function loadCollection() {
             const statusDiv = document.getElementById('status');
             statusDiv.innerText = "⏳ 正在從資料庫撈取收藏與最新市場價格...";
             
             try {
+                // ⚠️ 注意這裡的三表 JOIN 語法：user_collections -> card_master -> price_history
+                // 我們也把 card_master 的 id 撈出來，以便後續新增價格時知道是哪張卡
                 const { data, error } = await db
                     .from('user_collections')
                     .select(`
                         id, status, grade_vendor, grade_score,
                         card_master (
-                            name, card_code, language,
+                            id, name, card_code, language,
                             price_history (
                                 price,
                                 created_at
@@ -224,64 +225,66 @@
 
                 if (error) throw error;
 
-                // 轉換資料結構：因為 price_history 會回傳陣列，我們在前端先找出「最新的一筆價格」
+                // 進行安全資料轉換，提煉出「最新價格」
                 allCachedData = data.map(item => {
                     const card = item.card_master;
-                    const history = card?.price_history || [];
                     
-                    // 根據建立時間排序，將最新的價格排在最前面
-                    history.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    const latestPrice = history[0] ? history[0].price : 0;
+                    // 防錯機制：如果找不到價格歷史，給予空陣列
+                    const history = card?.price_history ?? [];
+                    let latestPrice = 0;
+
+                    if (history.length > 0) {
+                        // 將時間由新到舊排序，取第 0 筆（最新的一筆）
+                        const sortedHistory = [...history].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        latestPrice = sortedHistory[0]?.price ?? 0;
+                    }
 
                     return {
                         ...item,
-                        price: latestPrice // 這樣後面的 renderTable() 邏輯完全不用改！
+                        price: latestPrice // 將最新價格扁平化，方便 renderTable 使用
                     };
                 });
 
                 document.getElementById('collection-container').style.display = "block";
                 statusDiv.innerText = "✅ 載入完成！";
+                
                 renderTable(); 
 
             } catch (err) {
                 console.error("載入失敗:", err);
                 alert("載入收藏失敗：" + err.message);
+                statusDiv.innerText = "❌ 載入失敗";
             }
         }
 
-        // 2. 處理篩選條件並繪製畫面 (負責計算與顯示)
+        // 2. 處理篩選條件並繪製畫面 (維持不變，因為我們在 loadCollection 已經處理好資料格式了)
         function renderTable() {
             const tbody = document.getElementById('collection-body');
             const vendorFilter = document.getElementById('filter-vendor').value;
             const scoreFilter = document.getElementById('filter-score').value;
             
-            tbody.innerHTML = ""; // 清空舊畫面
+            tbody.innerHTML = ""; 
 
-            // --- 篩選邏輯 ---
             let filteredData = allCachedData.filter(item => {
-                // 檢查鑑定公司/狀態
                 let passVendor = true;
                 if (vendorFilter === 'Raw') passVendor = (item.status === 'raw');
                 else if (vendorFilter !== 'ALL') passVendor = (item.grade_vendor === vendorFilter);
 
-                // 檢查分數
                 let passScore = true;
                 if (scoreFilter === '10') passScore = (item.grade_score == 10);
                 else if (scoreFilter === '9') passScore = (item.grade_score >= 9);
 
-                return passVendor && passScore; // 兩個條件都符合才保留
+                return passVendor && passScore; 
             });
 
-            // --- 計算總價值與數量 ---
             let totalValue = 0;
             filteredData.forEach(item => {
-                totalValue += (item.price || 0); // 確保沒有價格時視為 0
+                totalValue += (item.price || 0); 
             });
             
             document.getElementById('total-cards').innerText = `${filteredData.length} 張`;
             document.getElementById('total-value').innerText = `$${totalValue.toLocaleString()}`;
 
-            // --- 繪製表格 ---
             if (filteredData.length === 0) {
                 tbody.innerHTML = "<tr><td colspan='4' style='padding: 15px; text-align: center;'>沒有符合篩選條件的卡片。</td></tr>";
                 return;
@@ -312,7 +315,7 @@
             });
         }
 
-        // 3. 切換進入編輯模式 (新增價格修改框)
+        // 3. 切換進入編輯模式
         function enterEditMode(id, currentStatus, currentVendor, currentScore, currentPrice) {
             const statusCell = document.getElementById(`status-cell-${id}`);
             const priceCell = document.getElementById(`price-cell-${id}`);
@@ -334,7 +337,6 @@
                 </select>
             `;
 
-            // 替換為輸入框讓使用者打價格
             priceCell.innerHTML = `<input type="number" id="edit-price-${id}" value="${currentPrice}" style="width: 80%; padding: 5px;">`;
 
             actionCell.innerHTML = `
@@ -343,47 +345,51 @@
             `;
         }
 
-        // 4. 儲存更新到雲端 (包含價格)
+        // 4. 儲存更新到雲端 (分離儲存邏輯：更新狀態 + 新增價格歷史)
         async function saveUpdate(id) {
             const vendor = document.getElementById(`edit-vendor-${id}`).value;
             const score = document.getElementById(`edit-score-${id}`).value;
             const priceInput = document.getElementById(`edit-price-${id}`).value;
             
             const isRaw = (vendor === 'Raw');
-            const newPrice = parseInt(priceInput) || 0; // 轉為數字
+            const newPrice = parseInt(priceInput) || 0; 
 
             document.getElementById('status').innerText = "⚡ 正在同步更新至雲端...";
 
             try {
-                const { error } = await db
+                // 動作 A：更新 user_collections (卡片狀態與評級)
+                const { error: collError } = await db
                     .from('user_collections')
                     .update({
                         status: isRaw ? 'raw' : 'graded',
                         grade_vendor: isRaw ? null : vendor,
-                        grade_score: isRaw ? null : parseFloat(score),
-                        price: newPrice // 寫入新價格
+                        grade_score: isRaw ? null : parseFloat(score)
                     })
                     .eq('id', id);
 
-                if (error) throw error;
+                if (collError) throw new Error("更新狀態失敗: " + collError.message);
 
-                // 為了讓畫面最快更新，我們可以直接更新記憶體裡的資料，不用重新撈資料庫
-                let index = allCachedData.findIndex(item => item.id == id);
-                if (index !== -1) {
-                    allCachedData[index].status = isRaw ? 'raw' : 'graded';
-                    allCachedData[index].grade_vendor = isRaw ? null : vendor;
-                    allCachedData[index].grade_score = isRaw ? null : parseFloat(score);
-                    allCachedData[index].price = newPrice;
-                }
+                // 動作 B：新增一筆紀錄到 price_history
+                // 先從記憶體中找出這筆收藏對應的 card_master ID
+                const currentItem = allCachedData.find(item => item.id == id);
+                const cardMasterId = currentItem.card_master.id;
 
-                alert("🎉 更新成功！");
-                document.getElementById('status').innerText = "✅ 狀態已同步";
-                renderTable(); // 直接根據新資料重新畫表格
+                const { error: priceError } = await db
+                    .from('price_history')
+                    .insert({
+                        card_id: cardMasterId, // 假設你的外來鍵欄位名稱叫 card_id
+                        price: newPrice
+                    });
+
+                if (priceError) throw new Error("新增價格歷史失敗: " + priceError.message);
+
+                alert("🎉 狀態與最新價格更新成功！");
+                loadCollection(); // 重新向資料庫要一次完整資料，確保畫面與雲端 100% 同步
 
             } catch (err) {
                 console.error("更新失敗:", err);
                 alert("更新失敗：" + err.message);
-                renderTable();
+                loadCollection();
             }
         }
     </script>
