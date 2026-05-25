@@ -49,7 +49,7 @@
         <select id="filter-score" onchange="renderTable()" style="width: auto; display: inline-block;">
             <option value="ALL">所有分數</option>
             <option value="10">完美 10 分</option>
-            <option value="9">9 分 (含) 以上</option>
+            <option value="9">9 分 (含) 以下</option>
         </select>
     </div>
 
@@ -195,7 +195,6 @@
         }
         // === 動作三：載入並顯示收藏 (使用 JOIN) ===
         // ==========================================
-        // ==========================================
         // ⬇️ 收藏庫專用功能區塊 (支援 3-Way JOIN 與歷史價格) ⬇️
         // ==========================================
 
@@ -272,7 +271,7 @@
 
                 let passScore = true;
                 if (scoreFilter === '10') passScore = (item.grade_score == 10);
-                else if (scoreFilter === '9') passScore = (item.grade_score >= 9);
+                else if (scoreFilter === '9') passScore = (item.grade_score <= 9);
 
                 return passVendor && passScore; 
             });
@@ -337,7 +336,6 @@
                 </select>
             `;
 
-            priceCell.innerHTML = `<input type="number" id="edit-price-${id}" value="${currentPrice}" style="width: 80%; padding: 5px;">`;
 
             actionCell.innerHTML = `
                 <button onclick="saveUpdate('${id}')" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:5px;">💾 儲存</button><br>
@@ -349,10 +347,8 @@
         async function saveUpdate(id) {
             const vendor = document.getElementById(`edit-vendor-${id}`).value;
             const score = document.getElementById(`edit-score-${id}`).value;
-            const priceInput = document.getElementById(`edit-price-${id}`).value;
             
             const isRaw = (vendor === 'Raw');
-            const newPrice = parseInt(priceInput) || 0; 
 
             document.getElementById('status').innerText = "⚡ 正在同步更新至雲端...";
 
@@ -367,21 +363,7 @@
                     })
                     .eq('id', id);
 
-                if (collError) throw new Error("更新狀態失敗: " + collError.message);
-
-                // 動作 B：新增一筆紀錄到 price_history
-                // 先從記憶體中找出這筆收藏對應的 card_master ID
-                const currentItem = allCachedData.find(item => item.id == id);
-                const cardMasterId = currentItem.card_master.id;
-
-                const { error: priceError } = await db
-                    .from('price_history')
-                    .insert({
-                        card_id: cardMasterId, // 假設你的外來鍵欄位名稱叫 card_id
-                        price: newPrice
-                    });
-
-                if (priceError) throw new Error("新增價格歷史失敗: " + priceError.message);
+                if (collError) throw new Error("更新狀態失敗: " + collError.message)
 
                 alert("🎉 狀態與最新價格更新成功！");
                 loadCollection(); // 重新向資料庫要一次完整資料，確保畫面與雲端 100% 同步
