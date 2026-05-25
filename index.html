@@ -22,51 +22,54 @@
 
     <div id="status">準備就緒</div>
     <hr style="margin: 30px 0; border: 1px solid #ddd;">
-
-    <!-- 4. 我的收藏區塊 -->
-    <h2>🗂️ 我的卡本</h2>
-    <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 載入我的收藏</button>
+    <hr style="margin: 30px 0; border: 1px solid #ddd;">
+    <h2>🗂️ 我的卡本與資產分析</h2>
     
-    <!-- 這裡用來顯示資料庫撈出來的卡片列表 -->
-    <div id="collection-container" style="margin-top: 20px; display: none;">
-        <table id="collection-table" style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
-            <thead style="background: #333; color: white;">
-                <tr>
-                    <th style="padding: 10px; text-align: left;">卡片名稱</th>
-                    <th style="padding: 10px; text-align: left;">編號</th>
-                    <th style="padding: 10px; text-align: left;">狀態/評級</th>
-                </tr>
-            </thead>
-            <tbody id="collection-body">
-                <!-- 資料會由 JavaScript 動態塞入這裡 -->
-            </tbody>
-        </table>
+    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+        <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h4 style="margin: 0 0 10px 0; color: #555;">💰 總市值</h4>
+            <p id="total-value" style="font-size: 24px; font-weight: bold; color: #28a745; margin: 0;">$0</p>
+        </div>
+        <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h4 style="margin: 0 0 10px 0; color: #555;">🃏 收藏總數</h4>
+            <p id="total-cards" style="font-size: 24px; font-weight: bold; color: #007bff; margin: 0;">0 張</p>
+        </div>
     </div>
-    <div id="result"></div>
 
-    <div id="save-section" class="panel" style="display:none;">
-        <h3 style="margin-top: 0;">📊 步驟二：設定收藏狀態</h3>
-        
-        <label>鑑定公司：</label>
-        <select id="grade-vendor">
-            <option value="Raw">無 (裸卡)</option>
+    <div style="background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
+        <label style="font-weight: bold; margin-right: 10px;">🔍 快速篩選：</label>
+        <select id="filter-vendor" onchange="renderTable()" style="width: auto; display: inline-block; margin-right: 10px;">
+            <option value="ALL">所有狀態/鑑定公司</option>
+            <option value="Raw">裸卡 (Raw)</option>
             <option value="PSA">PSA</option>
             <option value="BGS">BGS</option>
             <option value="CGC">CGC</option>
         </select>
-
-        <label>分數：</label>
-        <select id="grade-score">
-            <option value="10">10</option>
-            <option value="9.5">9.5</option>
-            <option value="9">9</option>
-            <option value="8">8</option>
-            <option value="7">7 及以下</option>
+        
+        <select id="filter-score" onchange="renderTable()" style="width: auto; display: inline-block;">
+            <option value="ALL">所有分數</option>
+            <option value="10">完美 10 分</option>
+            <option value="9">9 分 (含) 以上</option>
         </select>
-
-        <button class="btn" style="background: #28a745;" onclick="saveToDatabase()">✅ 辨識正確，存入圖鑑</button>
-        <button class="btn" style="background: #dc3545;" onclick="location.reload()">❌ 辨識錯誤，重新拍攝</button>
     </div>
+
+    <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 從雲端載入最新資料</button>
+    
+    <div id="collection-container" style="margin-top: 20px; display: none;">
+        <table id="collection-table" style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
+            <thead style="background: #333; color: white;">
+                <tr>
+                    <th style="padding: 10px; text-align: left;">卡片資訊</th>
+                    <th style="padding: 10px; text-align: left;">狀態/評級</th>
+                    <th style="padding: 10px; text-align: left;">市值 ($)</th>
+                    <th style="padding: 10px; text-align: center;">動作</th>
+                </tr>
+            </thead>
+            <tbody id="collection-body">
+                </tbody>
+        </table>
+    </div>
+    
 
     <script>
         // ⚠️ 請填入你的專案資訊
