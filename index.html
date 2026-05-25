@@ -253,7 +253,8 @@
                     if (item.status === 'graded') {
                         gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
                     }
-                    
+
+                    // 防呆處理：處理可能為 null 的鑑定資訊
                     const vendorArg = item.grade_vendor ? `'${item.grade_vendor}'` : `'Raw'`;
                     const scoreArg = item.grade_score ? item.grade_score : 10;
                     const currentPrice = item.current_price || 0;
@@ -271,11 +272,13 @@
                     tbody.innerHTML += row;
                 });
 
+                document.getElementById('collection-container').style.display = "block";
                 statusDiv.innerText = "✅ 載入完成！";
 
             } catch (err) {
-                console.error("載入失敗:", err);
+                console.error("繪製列表失敗:", err);
                 alert("載入收藏失敗：" + err.message);
+                statusDiv.innerText = "❌ 載入失敗";
             }
         }
 
