@@ -257,10 +257,10 @@
                     const row = `
                         <tr id="row-${item.collection_id}" style="border-bottom: 1px solid #eee;">
                             <td style="padding: 12px;"><b>${item.name}</b> <br><small style="color:#666;">${item.card_code} | ${item.language}</small></td>
-                            <td style="padding: 12px;">${gradeText}</td>
-                            <td style="padding: 12px; color: #28a745; font-weight: bold;">$${item.current_price.toLocaleString()}</td>
-                            <td style="padding: 12px; text-align: center;">
-                                <button onclick="/* 這裡接你的編輯邏輯 */" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">✏️ 修改</button>
+                            <td style="padding: 12px;" id="status-cell-${item.collection_id}">${gradeText}</td>
+                            <td style="padding: 12px; color: #28a745; font-weight: bold;" id="price-cell-${item.collection_id}">$${currentPrice.toLocaleString()}</td>
+                            <td style="padding: 12px; text-align: center;" id="action-cell-${item.collection_id}">
+                                <button onclick="enterEditMode('${item.collection_id}', '${item.card_id}', '${item.status}', ${vendorArg}, ${scoreArg}, ${currentPrice})" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 修改</button>
                             </td>
                         </tr>
                     `;
