@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 卡牌鑑定管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f9; max-width: 500px; margin: 0 auto; }
         .btn { background: #3ecf8e; color: white; padding: 15px 20px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin-bottom: 10px; font-weight: bold;}
@@ -33,6 +34,22 @@
         <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <h4 style="margin: 0 0 10px 0; color: #555;">🃏 收藏總數</h4>
             <p id="total-cards" style="font-size: 24px; font-weight: bold; color: #007bff; margin: 0;">0 張</p>
+        </div>
+    </div>
+    // 這裡是兩個圖表的區塊
+    <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+            <h4 style="margin: 0 0 15px 0; color: #333;">🏢 鑑定公司分佈 (張數)</h4>
+            <div style="max-width: 280px; margin: 0 auto;">
+                <canvas id="vendorChart"></canvas>
+            </div>
+        </div>
+        
+        <div style="flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+            <h4 style="margin: 0 0 15px 0; color: #333;">💯 評級分數分佈 (張數)</h4>
+            <div style="max-width: 280px; margin: 0 auto;">
+                <canvas id="scoreChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -340,6 +357,70 @@
                 console.error("更新失敗:", err);
                 alert("更新失敗：" + err.message);
                 loadCollection();
+            }
+        }
+    // 宣告全域變數用來儲存圖表實例，避免重複繪製時疊加錯誤
+        let vendorChartInstance = null;
+        let scoreChartInstance = null;
+
+        // === 動作：從資料庫撈取統計數據並繪製圓餅圖 ===
+        async function loadAndRenderCharts() {
+            try {
+                // 1. 同步向資料庫的兩個統計 View 請求資料
+                const [vendorRes, scoreRes] = await Promise.all([
+                    db.from('v_stats_vendor').select('*'),
+                    db.from('v_stats_score').select('*')
+                ]);
+
+                if (vendorRes.error) throw vendorRes.error;
+                if (scoreRes.error) throw scoreRes.error;
+
+                // ====== 2. 繪製鑑定公司圓餅圖 ======
+                const vendorLabels = vendorRes.data.map(item => item.vendor_label);
+                const vendorCounts = vendorRes.data.map(item => item.card_count);
+                
+                if (vendorChartInstance) vendorChartInstance.destroy(); // 銷毀舊圖表
+                const ctxVendor = document.getElementById('vendorChart').getContext('2d');
+                vendorChartInstance = new Chart(ctxVendor, {
+                    type: 'pie',
+                    data: {
+                        labels: vendorLabels,
+                        datasets: [{
+                            data: vendorCounts,
+                            backgroundColor: ['#6c757d', '#007bff', '#ffc107', '#dc3545', '#28a745', '#17a2b8']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+
+                // ====== 3. 繪製評級分數圓餅圖 ======
+                // 依照分數由高到低排序，讓圓餅圖看起來更整齊
+                const sortedScoreData = scoreRes.data.sort((a, b) => parseFloat(b.score_label) - parseFloat(a.score_label));
+                const scoreLabels = sortedScoreData.map(item => `分數: ${item.score_label}`);
+                const scoreCounts = sortedScoreData.map(item => item.card_count);
+
+                if (scoreChartInstance) scoreChartInstance.destroy(); // 銷毀舊圖表
+                const ctxScore = document.getElementById('scoreChart').getContext('2d');
+                scoreChartInstance = new Chart(ctxScore, {
+                    type: 'doughnut', // 這裡用甜甜圈圖，跟左邊的圓餅圖做視覺區隔
+                    data: {
+                        labels: scoreLabels,
+                        datasets: [{
+                            data: scoreCounts,
+                            backgroundColor: ['#28a745', '#20c997', '#9fcd25', '#ffc107', '#fd7e14', '#dc3545']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+
+            } catch (err) {
+                console.error("生成圖表失敗:", err);
             }
         }
     </script>
