@@ -36,12 +36,13 @@
         </div>   
 
         <h1>🎴 AI 卡牌掃描儀</h1>
-        
-        <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
-        <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
+        <input type="file" id="fileInput" accept="image/*" ... >
+        <div id="status"></div>
 
-        <div id="status">準備就緒</div>
-        <div id="result"></div>
+        <div id="result" style="margin-top: 20px; font-weight: bold; color: #333;"></div>
+
+        <div id="save-section" style="margin-top: 20px; display: none; background: #eef; padding: 15px; border-radius: 8px;">
+            </div>
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
         <h2>🗂️ 我的卡本與資產分析</h2>
