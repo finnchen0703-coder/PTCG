@@ -37,7 +37,7 @@
 
         <h1>🎴 AI 卡牌掃描儀</h1>
         <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
-        <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
+        <button class="btn" style="background: #4fab81;"onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
 
         <div id="status">準備就緒</div>
         
@@ -66,7 +66,7 @@
             <button class="btn" style="background: #28a745;" onclick="saveToDatabase()">✅ 辨識正確，存入圖鑑</button>
             <button class="btn" style="background: #dc3545;" onclick="location.reload()">❌ 辨識錯誤，重新拍攝</button>
         </div>
-        
+
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
         <h2>🗂️ 我的卡本與資產分析</h2>
@@ -277,9 +277,15 @@
         // === 動作二：寫入資料庫並刪除照片 ===
         async function saveToDatabase() {
             statusDiv.innerText = "💾 正在寫入資料庫與清理空間...";
-            saveSection.style.display = "none"; // 先隱藏按鈕防連點
+            saveSection.style.display = "none"; 
 
             try {
+                // 🔒 步驟 0：先取得當前登入使用者的身分 (新增這段)
+                const { data: { user }, error: userError } = await db.auth.getUser();
+                if (userError || !user) {
+                    throw new Error("找不到登入狀態，請重新登入！");
+                }
+
                 // 1. 檢查主圖鑑 (card_master) 有沒有這張卡，沒有就新增
                 let { data: card, error: cardError } = await db
                     .from('card_master')
@@ -309,6 +315,7 @@
                 const score = document.getElementById('grade-score').value;
                 
                 const { error: collectError } = await db.from('user_collections').insert({
+                    user_id: user.id, // ✨ 關鍵修復：我們不依賴資料庫預設值了，直接把前端拿到的 ID 砸進去！
                     card_id: cardId,
                     status: vendor === 'Raw' ? 'raw' : 'graded',
                     grade_vendor: vendor === 'Raw' ? null : vendor,
@@ -324,12 +331,12 @@
                 if (deleteError) console.warn("照片刪除失敗，但不影響存檔", deleteError);
 
                 alert("🎉 成功！卡片已加入圖鑑，雲端照片已清理完畢。");
-                location.reload(); // 重整頁面，準備掃描下一張
+                location.reload(); 
 
             } catch (err) {
                 console.error(err);
-                alert("儲存失敗：" + err.message + "\n(請確認資料庫 RLS 權限已開啟)");
-                saveSection.style.display = "block"; // 失敗的話把按鈕顯示回來
+                alert("儲存失敗：" + err.message);
+                saveSection.style.display = "block"; 
                 statusDiv.innerText = "❌ 儲存失敗";
             }
         }
