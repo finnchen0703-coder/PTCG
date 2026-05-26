@@ -15,93 +15,113 @@
     </style>
 </head>
 <body>
-    <h1>🎴 AI 卡牌掃描儀</h1>
-    
-    <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
-    <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
-
-    <div id="status">準備就緒</div>
-    <hr style="margin: 30px 0; border: 1px solid #ddd;">
-    <hr style="margin: 30px 0; border: 1px solid #ddd;">
-    <h2>🗂️ 我的卡本與資產分析</h2>
-    
-    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-        <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h4 style="margin: 0 0 10px 0; color: #555;">💰 總市值</h4>
-            <p id="total-value" style="font-size: 24px; font-weight: bold; color: #28a745; margin: 0;">$0</p>
-        </div>
-        <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h4 style="margin: 0 0 10px 0; color: #555;">🃏 收藏總數</h4>
-            <p id="total-cards" style="font-size: 24px; font-weight: bold; color: #007bff; margin: 0;">0 張</p>
-        </div>
-    </div>
-    
-
-    <div style="background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
-        <label style="font-weight: bold; margin-right: 10px;">🔍 快速篩選：</label>
-        <select id="filter-vendor" onchange="renderTable()" style="width: auto; display: inline-block; margin-right: 10px;">
-            <option value="ALL">所有狀態/鑑定公司</option>
-            <option value="Raw">裸卡 (Raw)</option>
-            <option value="PSA">PSA</option>
-            <option value="BGS">BGS</option>
-            <option value="CGC">CGC</option>
-        </select>
+    <div id="auth-section" style="max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: left;">
+        <h2 style="text-align: center; margin-top: 0;">🔐 訓練家登入</h2>
+        <label>Email：</label>
+        <input type="email" id="email-input" placeholder="輸入你的 Email" style="width: 100%; padding: 10px; margin: 5px 0 15px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
         
-        <select id="filter-score" onchange="renderTable()" style="width: auto; display: inline-block;">
-            <option value="ALL">所有分數</option>
-            <option value="10">完美 10 分</option>
-            <option value="9">9 分 (含) 以下</option>
-        </select>
+        <label>密碼：</label>
+        <input type="password" id="password-input" placeholder="至少 6 位數密碼" style="width: 100%; padding: 10px; margin: 5px 0 20px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+        
+        <button class="btn" style="background: #007bff;" onclick="login()">🔑 登入</button>
+        <button class="btn" style="background: #6c757d;" onclick="signUp()">📝 註冊新帳號</button>
+        <div id="auth-status" style="margin-top: 10px; color: #dc3545; text-align: center; font-weight: bold;"></div>
     </div>
 
-    <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 載入我的卡本</button>
-    
-    <div id="collection-container" style="margin-top: 20px; display: none;">
-        <table id="collection-table" style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
-            <thead style="background: #333; color: white;">
-                <tr>
-                    <th style="padding: 10px; text-align: left;">卡片資訊</th>
-                    <th style="padding: 10px; text-align: left;">狀態/評級</th>
-                    <th style="padding: 10px; text-align: left;">市值 ($)</th>
-                    <th style="padding: 10px; text-align: center;">動作</th>
-                </tr>
-            </thead>
-            <tbody id="collection-body">
-                </tbody>
-        </table>
-    </div>
+    <div id="app-section" style="display: none;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div id="user-email" style="font-weight: bold; color: #333;"></div>
+            <button onclick="logout()" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">登出</button>
+        </div>   
 
-    <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h4 style="margin: 0 0 15px 0; color: #333; text-align: center;">🏢 鑑定公司分佈與市值</h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+        <h1>🎴 AI 卡牌掃描儀</h1>
+        
+        <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
+
+        <div id="status">準備就緒</div>
+        <hr style="margin: 30px 0; border: 1px solid #ddd;">
+        <hr style="margin: 30px 0; border: 1px solid #ddd;">
+        <h2>🗂️ 我的卡本與資產分析</h2>
+        
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 10px 0; color: #555;">💰 總市值</h4>
+                <p id="total-value" style="font-size: 24px; font-weight: bold; color: #28a745; margin: 0;">$0</p>
+            </div>
+            <div style="flex: 1; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 10px 0; color: #555;">🃏 收藏總數</h4>
+                <p id="total-cards" style="font-size: 24px; font-weight: bold; color: #007bff; margin: 0;">0 張</p>
+            </div>
+        </div>
+        
+
+        <div style="background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
+            <label style="font-weight: bold; margin-right: 10px;">🔍 快速篩選：</label>
+            <select id="filter-vendor" onchange="renderTable()" style="width: auto; display: inline-block; margin-right: 10px;">
+                <option value="ALL">所有狀態/鑑定公司</option>
+                <option value="Raw">裸卡 (Raw)</option>
+                <option value="PSA">PSA</option>
+                <option value="BGS">BGS</option>
+                <option value="CGC">CGC</option>
+            </select>
+            
+            <select id="filter-score" onchange="renderTable()" style="width: auto; display: inline-block;">
+                <option value="ALL">所有分數</option>
+                <option value="10">完美 10 分</option>
+                <option value="9">9 分 (含) 以下</option>
+            </select>
+        </div>
+
+        <button class="btn" style="background: #007bff;" onclick="loadCollection()">📖 載入我的卡本</button>
+        
+        <div id="collection-container" style="margin-top: 20px; display: none;">
+            <table id="collection-table" style="width: 100%; border-collapse: collapse; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
+                <thead style="background: #333; color: white;">
                     <tr>
-                        <th style="padding: 8px; text-align: left;">公司/狀態</th>
-                        <th style="padding: 8px; text-align: right;">數量 (比例)</th>
-                        <th style="padding: 8px; text-align: right;">總市值</th> </tr>
+                        <th style="padding: 10px; text-align: left;">卡片資訊</th>
+                        <th style="padding: 10px; text-align: left;">狀態/評級</th>
+                        <th style="padding: 10px; text-align: left;">市值 ($)</th>
+                        <th style="padding: 10px; text-align: center;">動作</th>
+                    </tr>
                 </thead>
-                <tbody id="stats-vendor-body">
+                <tbody id="collection-body">
                     </tbody>
             </table>
         </div>
-        
-        <div style="flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h4 style="margin: 0 0 15px 0; color: #333; text-align: center;">💯 評級分數分佈與市值</h4>
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                    <tr>
-                        <th style="padding: 8px; text-align: left;">分數</th>
-                        <th style="padding: 8px; text-align: right;">數量 (比例)</th>
-                        <th style="padding: 8px; text-align: right;">總市值</th> </tr>
-                </thead>
-                <tbody id="stats-score-body">
-                    </tbody>
-            </table>
-        </div>
-    </div>   
-    
 
+        <div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 15px 0; color: #333; text-align: center;">🏢 鑑定公司分佈與市值</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">公司/狀態</th>
+                            <th style="padding: 8px; text-align: right;">數量 (比例)</th>
+                            <th style="padding: 8px; text-align: right;">總市值</th> </tr>
+                    </thead>
+                    <tbody id="stats-vendor-body">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div style="flex: 1; min-width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h4 style="margin: 0 0 15px 0; color: #333; text-align: center;">💯 評級分數分佈與市值</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <tr>
+                            <th style="padding: 8px; text-align: left;">分數</th>
+                            <th style="padding: 8px; text-align: right;">數量 (比例)</th>
+                            <th style="padding: 8px; text-align: right;">總市值</th> </tr>
+                    </thead>
+                    <tbody id="stats-score-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>   
+    </div> 
+    
     <script>
         // ⚠️ 請填入你的專案資訊
         const SUPABASE_URL = 'https://ddwamjhkxxogleqstncx.supabase.co'; // 你的 URL
@@ -116,7 +136,70 @@
 
         // 全域變數，用來暫存準備寫入資料庫的資料
         let currentCardData = null; 
-        let currentFileName = "";    
+        let currentFileName = "";
+        // ==========================================
+        // ⬇️ 會員登入與畫面切換系統 ⬇️
+        // ==========================================
+
+        const authSection = document.getElementById('auth-section');
+        const appSection = document.getElementById('app-section');
+        const authStatus = document.getElementById('auth-status');
+        const userEmailDisplay = document.getElementById('user-email');
+
+        // 1. 監聽登入狀態改變 (Supabase 超強大功能，會自動檢查你有沒有登入過)
+        db.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                // 已經登入：隱藏登入框，顯示主系統，並印出 Email
+                authSection.style.display = 'none';
+                appSection.style.display = 'block';
+                userEmailDisplay.innerText = `👋 歡迎回來，${session.user.email}`;
+                
+                // 自動幫使用者載入他的專屬收藏！
+                loadCollection(); 
+            } else {
+                // 未登入或已登出：顯示登入框，隱藏主系統
+                authSection.style.display = 'block';
+                appSection.style.display = 'none';
+                userEmailDisplay.innerText = '';
+            }
+        });
+
+        // 2. 註冊新帳號
+        async function signUp() {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            authStatus.innerText = "⏳ 註冊中...";
+
+            const { data, error } = await db.auth.signUp({ email, password });
+            
+            if (error) {
+                authStatus.innerText = "❌ 註冊失敗：" + error.message;
+            } else {
+                authStatus.style.color = "#28a745";
+                authStatus.innerText = "🎉 註冊成功！系統已自動為您登入。";
+            }
+        }
+
+        // 3. 登入現有帳號
+        async function login() {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            authStatus.innerText = "⏳ 登入中...";
+
+            const { data, error } = await db.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                authStatus.innerText = "❌ 登入失敗：帳號或密碼錯誤";
+            } else {
+                authStatus.innerText = ""; // 登入成功，onAuthStateChange 會自動接手切換畫面
+            }
+        }
+
+        // 4. 登出
+        async function logout() {
+            const { error } = await db.auth.signOut();
+            if (error) alert("登出失敗：" + error.message);
+        }    
 
         // === 動作一：拍照與辨識 ===
         fileInput.onchange = async (e) => {
