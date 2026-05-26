@@ -36,13 +36,37 @@
         </div>   
 
         <h1>🎴 AI 卡牌掃描儀</h1>
-        <input type="file" id="fileInput" accept="image/*" ... >
-        <div id="status"></div>
+        <input type="file" accept="image/*" capture="camera" id="fileInput" style="display:none">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📷 拍照辨識卡牌</button>
 
-        <div id="result" style="margin-top: 20px; font-weight: bold; color: #333;"></div>
+        <div id="status">準備就緒</div>
+        
+        <div id="result"></div>
 
-        <div id="save-section" style="margin-top: 20px; display: none; background: #eef; padding: 15px; border-radius: 8px;">
-            </div>
+        <div id="save-section" class="panel" style="display:none;">
+            <h3 style="margin-top: 0;">📊 步驟二：設定收藏狀態</h3>
+            
+            <label>鑑定公司：</label>
+            <select id="grade-vendor">
+                <option value="Raw">無 (裸卡)</option>
+                <option value="PSA">PSA</option>
+                <option value="BGS">BGS</option>
+                <option value="CGC">CGC</option>
+            </select>
+
+            <label>分數：</label>
+            <select id="grade-score">
+                <option value="10">10</option>
+                <option value="9.5">9.5</option>
+                <option value="9">9</option>
+                <option value="8">8</option>
+                <option value="7">7 及以下</option>
+            </select>
+
+            <button class="btn" style="background: #28a745;" onclick="saveToDatabase()">✅ 辨識正確，存入圖鑑</button>
+            <button class="btn" style="background: #dc3545;" onclick="location.reload()">❌ 辨識錯誤，重新拍攝</button>
+        </div>
+        
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
         <h2>🗂️ 我的卡本與資產分析</h2>
