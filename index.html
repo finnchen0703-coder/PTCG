@@ -386,36 +386,22 @@
                 }
 
                 const { data, error } = await listQuery.order('collection_id', { ascending: false });
-
                 if (error) throw error;
 
-                // 2. 順利拿到資料，不囉唆立刻把表格畫出來！
-                if (data.length === 0) {
-                    tbody.innerHTML = "<tr><td colspan='4' style='padding: 15px; text-align: center;'>沒有符合條件的卡片。</td></tr>";
-                } else {
-                    data.forEach(item => {
-                        let gradeText = "裸卡 (Raw)";
-                        if (item.status === 'graded') {
-                            gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
-                        }
+                // 計算總市值 (維持原樣)
+                const totalValue = data.reduce((sum, item) => sum + (item.current_price || 0), 0);
+                document.getElementById('total-cards').innerText = `${data.length} 張`;
+                document.getElementById('total-value').innerText = `$${totalValue.toLocaleString()}`;
 
-                        const vendorArg = item.grade_vendor ? `'${item.grade_vendor}'` : `'Raw'`;
-                        const scoreArg = item.grade_score ? item.grade_score : 10;
-                        const currentPrice = item.current_price || 0;
+                // ✨ 關鍵修改：不直接畫畫面，而是把資料存起來，重設為第 1 頁，然後呼叫分頁渲染器
+                allCollectionData = data; 
+                currentPage = 1; 
+                renderTablePage(); // 呼叫下方的渲染函式
 
-                        const row = `
-                            <tr id="row-${item.collection_id}" style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 12px;"><b>${item.name}</b> <br><small style="color:#666;">${item.card_code} | ${item.language}</small></td>
-                                <td style="padding: 12px;" id="status-cell-${item.collection_id}">${gradeText}</td>
-                                <td style="padding: 12px; color: #28a745; font-weight: bold;" id="price-cell-${item.collection_id}">$${currentPrice.toLocaleString()}</td>
-                                <td style="padding: 12px; text-align: center;" id="action-cell-${item.collection_id}">
-                                    <button onclick="enterEditMode('${item.collection_id}', '${item.card_id}', '${item.status}', ${vendorArg}, ${scoreArg}, ${currentPrice})" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 修改</button>
-                                </td>
-                            </tr>
-                        `;
-                        tbody.innerHTML += row;
-                    });
-                }
+                document.getElementById('collection-container').style.display = "block";
+                
+                await loadAndRenderStatsTable(user);
+                statusDiv.innerText = "✅ 您的專屬收藏與資產分析載入完成！";
                 
                 // 顯示列表區塊
                 document.getElementById('collection-container').style.display = "block";
@@ -455,6 +441,75 @@
                 alert("載入收藏清單失敗：" + err.message);
                 statusDiv.innerText = "❌ 載入失敗";
             }
+        }
+
+        // === ✨ 新增以下兩個獨立的函式來處理分頁動作 ✨ ===
+
+        // 負責「切割資料」並畫出畫面的函式
+        function renderTablePage() {
+            const tbody = document.getElementById('collection-body');
+            tbody.innerHTML = ""; 
+            
+            // 計算總頁數 (無條件進位)
+            const totalPages = Math.ceil(allCollectionData.length / rowsPerPage) || 1;
+            
+            // 安全防護：確保當前頁數不會超出範圍
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            // 計算要從陣列的第幾個切到第幾個
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            
+            // 切割出當前頁面該顯示的卡片陣列
+            const pageData = allCollectionData.slice(startIndex, endIndex);
+
+            // 繪製畫面列表
+            if (pageData.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='4' style='padding: 15px; text-align: center;'>您的卡本目前空空如也。</td></tr>";
+            } else {
+                pageData.forEach(item => {
+                    let gradeText = "裸卡 (Raw)";
+                    if (item.status === 'graded') {
+                        gradeText = `<span style="background:#ffd700; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:12px;">${item.grade_vendor} ${item.grade_score}</span>`;
+                    }
+
+                    const vendorArg = item.grade_vendor ? `'${item.grade_vendor}'` : `'Raw'`;
+                    const scoreArg = item.grade_score ? item.grade_score : 10;
+                    const currentPrice = item.current_price || 0;
+
+                    const row = `
+                        <tr id="row-${item.collection_id}" style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;"><b>${item.name}</b> <br><small style="color:#666;">${item.card_code} | ${item.language}</small></td>
+                            <td style="padding: 12px;" id="status-cell-${item.collection_id}">${gradeText}</td>
+                            <td style="padding: 12px; color: #28a745; font-weight: bold;" id="price-cell-${item.collection_id}">$${currentPrice.toLocaleString()}</td>
+                            <td style="padding: 12px; text-align: center;" id="action-cell-${item.collection_id}">
+                                <button onclick="enterEditMode('${item.collection_id}', '${item.card_id}', '${item.status}', ${vendorArg}, ${scoreArg}, ${currentPrice})" style="background:#ffc107; color:black; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✏️ 修改</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            }
+
+            // 更新下方按鈕的文字與可用狀態
+            document.getElementById('page-info').innerText = `第 ${currentPage} 頁 / 共 ${totalPages} 頁`;
+            
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            
+            // 如果在第一頁，上一頁按鈕反灰失效；如果最後一頁，下一頁按鈕反灰
+            prevBtn.disabled = (currentPage === 1);
+            prevBtn.style.opacity = (currentPage === 1) ? "0.5" : "1";
+            
+            nextBtn.disabled = (currentPage === totalPages);
+            nextBtn.style.opacity = (currentPage === totalPages) ? "0.5" : "1";
+        }
+
+        // 負責響應按鈕點擊、改變頁數的函式
+        function changePage(direction) {
+            currentPage += direction;
+            renderTablePage();
         }
 
         // 3. 切換進入編輯模式
