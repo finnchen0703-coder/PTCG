@@ -85,7 +85,7 @@
 
         <div style="background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left;">
             <label style="font-weight: bold; margin-right: 10px;">🔍 快速篩選：</label>
-            <select id="filter-vendor" onchange="renderTable()" style="width: auto; display: inline-block; margin-right: 10px;">
+            <select id="filter-vendor" onchange="loadCollection()" style="width: auto; display: inline-block; margin-right: 10px;">
                 <option value="ALL">所有狀態/鑑定公司</option>
                 <option value="Raw">裸卡 (Raw)</option>
                 <option value="PSA">PSA</option>
@@ -93,7 +93,7 @@
                 <option value="CGC">CGC</option>
             </select>
             
-            <select id="filter-score" onchange="renderTable()" style="width: auto; display: inline-block;">
+            <select id="filter-score" onchange="loadCollection()" style="width: auto; display: inline-block;">
                 <option value="ALL">所有分數</option>
                 <option value="10">完美 10 分</option>
                 <option value="9">9 分 (含) 以下</option>
@@ -471,7 +471,7 @@
 
             actionCell.innerHTML = `
                 <button onclick="saveUpdate('${id}')" style="background:#28a745; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; margin-bottom:5px;">💾 儲存</button><br>
-                <button onclick="renderTable()" style="background:#6c757d; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">❌ 取消</button>
+                <button onclick="loadCollection()" style="background:#6c757d; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">❌ 取消</button>
             `;
         }
 
