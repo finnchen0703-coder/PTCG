@@ -369,6 +369,9 @@
             tbody.innerHTML = ""; // 先清空舊畫面
 
             try {
+                const { data: { user }, error: userError } = await db.auth.getUser();
+                if (userError || !user) return; // 如果沒登入就中斷
+
                 // 1. 【核心策略】先單獨向 View 請求明細資料，確保主要列表一定能畫出來
                 let listQuery = db.from('collection_dashboard').select('*');
 
